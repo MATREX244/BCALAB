@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center py-20">
+    <h1 class="text-6xl font-extrabold mb-6">Plataforma de Gestão <span class="text-blue-500">SecureCorp</span></h1>
+    <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
+        A solução definitiva para gerenciamento de ativos, faturamento e segurança corporativa. 
+        Utilizada pelas maiores empresas do mundo para manter seus dados seguros.
+    </p>
+    <div class="flex justify-center gap-4">
+        <a href="/register" class="bg-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-700">Começar Agora</a>
+        <a href="/login" class="bg-gray-800 border border-gray-700 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-700">Acessar Portal</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
+    <div class="bg-gray-800 p-8 rounded-xl border border-gray-700">
+        <div class="text-blue-500 text-4xl mb-4">🛡️</div>
+        <h3 class="text-xl font-bold mb-2">Segurança Máxima</h3>
+        <p class="text-gray-400">Nossos sistemas utilizam os mais avançados controles de acesso do mercado.</p>
+    </div>
+    <div class="bg-gray-800 p-8 rounded-xl border border-gray-700">
+        <div class="text-blue-500 text-4xl mb-4">📊</div>
+        <h3 class="text-xl font-bold mb-2">Gestão de Faturas</h3>
+        <p class="text-gray-400">Controle total sobre seus pagamentos e faturamentos em um só lugar.</p>
+    </div>
+    <div class="bg-gray-800 p-8 rounded-xl border border-gray-700">
+        <div class="text-blue-500 text-4xl mb-4">🚀</div>
+        <h3 class="text-xl font-bold mb-2">Escalabilidade</h3>
+        <p class="text-gray-400">Pronto para crescer junto com a sua empresa, do startup ao enterprise.</p>
+    </div>
+</div>
+{% endblock %}

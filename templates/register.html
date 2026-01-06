@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto bg-gray-800 p-8 rounded-lg border border-gray-700">
+    <h2 class="text-3xl font-bold mb-6 text-center">Criar Conta</h2>
+    <form method="POST">
+        <div class="mb-4">
+            <label class="block text-gray-400 mb-2">Usuário</label>
+            <input type="text" name="username" class="w-full bg-gray-900 border border-gray-700 p-3 rounded focus:border-blue-500 outline-none" required>
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-400 mb-2">E-mail</label>
+            <input type="email" name="email" class="w-full bg-gray-900 border border-gray-700 p-3 rounded focus:border-blue-500 outline-none" required>
+        </div>
+        <div class="mb-6">
+            <label class="block text-gray-400 mb-2">Senha</label>
+            <input type="password" name="password" class="w-full bg-gray-900 border border-gray-700 p-3 rounded focus:border-blue-500 outline-none" required>
+        </div>
+        
+        <!-- VULNERABILIDADE: O campo 'role' está oculto mas pode ser manipulado pelo atacante -->
+        <input type="hidden" name="role" value="user">
+        
+        <button type="submit" class="w-full bg-blue-600 py-3 rounded font-bold hover:bg-blue-700 transition">Registrar</button>
+    </form>
+</div>
+{% endblock %}

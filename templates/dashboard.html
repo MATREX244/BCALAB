@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+        <h2 class="text-xl font-semibold mb-4">Minhas Faturas</h2>
+        <p class="text-gray-400 mb-4">Visualize seus pagamentos recentes.</p>
+        <button onclick="viewInvoice(1)" class="bg-blue-600 w-full py-2 rounded hover:bg-blue-700">Ver Fatura #1</button>
+    </div>
+    
+    <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+        <h2 class="text-xl font-semibold mb-4">Status da Conta</h2>
+        <div id="premium-status" class="p-3 rounded text-center font-bold">
+            Carregando...
+        </div>
+        <p class="text-sm text-gray-500 mt-2 text-center">Acesso Premium desbloqueia recursos exclusivos.</p>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+        <h2 class="text-xl font-semibold mb-4">Configurações</h2>
+        <p class="text-gray-400 mb-4">Gerencie sua conta e preferências.</p>
+        <a href="/api/v1/settings/export" class="block text-center bg-gray-700 py-2 rounded hover:bg-gray-600">Exportar Configurações</a>
+    </div>
+</div>
+
+<div id="invoice-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4">
+    <div class="bg-gray-800 p-8 rounded-lg max-w-md w-full border border-gray-600">
+        <h3 class="text-2xl font-bold mb-4" id="modal-title">Fatura</h3>
+        <div id="modal-content" class="space-y-2"></div>
+        <button onclick="closeModal()" class="mt-6 w-full bg-red-600 py-2 rounded">Fechar</button>
+    </div>
+</div>
+
+<script>
+    // VULNERABILIDADE: Manipulação de Resposta (Client-Side)
+    // O script confia no valor de 'is_premium' retornado pelo servidor ou armazenado no objeto global
+    const userData = {
+        username: "{{ session.get('username') }}",
+        is_premium: {{ 'true' if session.get('is_premium') else 'false' }}
+    };
+
+    function updatePremiumUI() {
+        const statusDiv = document.getElementById('premium-status');
+        if (userData.is_premium) {
+            statusDiv.innerText = "PREMIUM ATIVO";
+            statusDiv.className = "bg-green-900 text-green-400 p-3 rounded text-center font-bold";
+            statusDiv.innerHTML += "<br><span class='text-xs'>FLAG{CLIENT_SIDE_PREMIUM_BYPASS_1102}</span>";
+        } else {
+            statusDiv.innerText = "CONTA GRATUITA";
+            statusDiv.className = "bg-gray-700 text-gray-400 p-3 rounded text-center font-bold";
+        }
+    }
+
+    async function viewInvoice(id) {
+        const res = await fetch(`/api/v1/invoice/${id}`);
+        const data = await res.json();
+        const modal = document.getElementById('invoice-modal');
+        const content = document.getElementById('modal-content');
+        
+        if (data.error) {
+            alert("Erro ao carregar fatura");
+            return;
+        }
+
+        content.innerHTML = `
+            <p><strong>ID:</strong> ${data.id}</p>
+            <p><strong>Valor:</strong> R$ ${data.amount}</p>
+            <p><strong>Descrição:</strong> ${data.description}</p>
+            ${data.flag ? `<p class="text-green-400 font-mono mt-4">FLAG: ${data.flag}</p>` : ''}
+        `;
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('invoice-modal').classList.add('hidden');
+    }
+
+    updatePremiumUI();
+</script>
+{% endblock %}
