@@ -10,6 +10,8 @@ app.secret_key = secrets.token_hex(16)
 DATABASE = 'securecorp.db'
 
 def init_db():
+    # Se o banco já existir, vamos garantir que ele tenha os dados mais recentes
+    # Para um laboratório, é melhor recriar o banco no início se quisermos resetar as senhas
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
     
@@ -46,10 +48,11 @@ def init_db():
     user_pw = generate_password_hash('user123')
     
     try:
-        c.execute("INSERT INTO users (username, email, password, role, is_premium) VALUES (?, ?, ?, ?, ?)",
-                  ('admin', 'admin@securecorp.com', admin_pw, 'admin', 1))
-        c.execute("INSERT INTO users (username, email, password, role, is_premium) VALUES (?, ?, ?, ?, ?)",
-                  ('user1', 'user1@example.com', user_pw, 'user', 0))
+        # Usar INSERT OR REPLACE para garantir que as senhas sejam atualizadas
+        c.execute("INSERT OR REPLACE INTO users (id, username, email, password, role, is_premium) VALUES (?, ?, ?, ?, ?, ?)",
+                  (1, 'admin', 'admin@securecorp.com', admin_pw, 'admin', 1))
+        c.execute("INSERT OR REPLACE INTO users (id, username, email, password, role, is_premium) VALUES (?, ?, ?, ?, ?, ?)",
+                  (2, 'user1', 'user1@example.com', user_pw, 'user', 0))
         
         user_id = 2
         c.execute("INSERT INTO invoices (user_id, amount, description) VALUES (?, ?, ?)",
