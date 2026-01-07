@@ -10,8 +10,6 @@ app.secret_key = secrets.token_hex(16)
 DATABASE = 'securecorp.db'
 
 def init_db():
-    # Se o banco já existir, vamos garantir que ele tenha os dados mais recentes
-    # Para um laboratório, é melhor recriar o banco no início se quisermos resetar as senhas
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
     
@@ -22,7 +20,7 @@ def init_db():
                   email TEXT UNIQUE NOT NULL,
                   password TEXT NOT NULL,
                   role TEXT DEFAULT 'user',
-                  is_premium INTEGER DEFAULT 0)''')
+                  paid INTEGER DEFAULT 0)''')
     
     # Tabela de Faturas (IDOR)
     c.execute('''CREATE TABLE IF NOT EXISTS invoices
@@ -33,37 +31,35 @@ def init_db():
                   flag TEXT,
                   FOREIGN KEY (user_id) REFERENCES users (id))''')
     
-    # Tabela de Configurações Globais
-    c.execute('''CREATE TABLE IF NOT EXISTS global_settings
+    # Tabela de Configurações Administrativas (Oculta)
+    c.execute('''CREATE TABLE IF NOT EXISTS admin_settings
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  config_name TEXT UNIQUE NOT NULL,
-                  config_value TEXT)''')
+                  setting_key TEXT UNIQUE NOT NULL,
+                  setting_value TEXT)''')
 
     # Inserir dados iniciais (Simulando migração de DB)
-    # TODO: Mover credenciais para variáveis de ambiente em produção.
-    # Credenciais temporárias para teste:
     # Admin: admin / admin123
     # Usuário: user1 / user123
     admin_pw = generate_password_hash('admin123')
     user_pw = generate_password_hash('user123')
     
     try:
-        # Usar INSERT OR REPLACE para garantir que as senhas sejam atualizadas
-        c.execute("INSERT OR REPLACE INTO users (id, username, email, password, role, is_premium) VALUES (?, ?, ?, ?, ?, ?)",
+        c.execute("INSERT OR REPLACE INTO users (id, username, email, password, role, paid) VALUES (?, ?, ?, ?, ?, ?)",
                   (1, 'admin', 'admin@securecorp.com', admin_pw, 'admin', 1))
-        c.execute("INSERT OR REPLACE INTO users (id, username, email, password, role, is_premium) VALUES (?, ?, ?, ?, ?, ?)",
+        c.execute("INSERT OR REPLACE INTO users (id, username, email, password, role, paid) VALUES (?, ?, ?, ?, ?, ?)",
                   (2, 'user1', 'user1@example.com', user_pw, 'user', 0))
         
-        user_id = 2
-        c.execute("INSERT INTO invoices (user_id, amount, description) VALUES (?, ?, ?)",
-                  (user_id, 150.00, 'Serviços de Consultoria Jan/2026'))
+        # Dados para IDOR
+        c.execute("INSERT OR REPLACE INTO invoices (id, user_id, amount, description) VALUES (?, ?, ?, ?)",
+                  (1, 2, 150.00, 'Serviços de Consultoria Jan/2026'))
+        c.execute("INSERT OR REPLACE INTO invoices (id, user_id, amount, description, flag) VALUES (?, ?, ?, ?, ?)",
+                  (2, 1, 5000.00, 'Pagamento Secreto de Infraestrutura', 'FLAG{IDOR_INVOICE_EXPOSED_8829}'))
         
-        # Fatura de outro usuário (IDOR Target)
-        c.execute("INSERT INTO invoices (user_id, amount, description, flag) VALUES (?, ?, ?, ?)",
-                  (1, 5000.00, 'Pagamento Secreto de Infraestrutura', 'FLAG{IDOR_INVOICE_EXPOSED_8829}'))
-        
-        c.execute("INSERT INTO global_settings (config_name, config_value) VALUES (?, ?)",
-                  ('AWS_SECRET_KEY', 'AKIA_SECURECORP_FLAG{SENSITIVE_EXPORT_UNPROTECTED_4421}'))
+        # Dados para Endpoints Ocultos
+        c.execute("INSERT OR REPLACE INTO admin_settings (id, setting_key, setting_value) VALUES (?, ?, ?)",
+                  (1, 'AWS_SECRET_KEY', 'AKIA_SECURECORP_FLAG{HIDDEN_ENDPOINT_ACCESS_7721}'))
+        c.execute("INSERT OR REPLACE INTO admin_settings (id, setting_key, setting_value) VALUES (?, ?, ?)",
+                  (2, 'BACKUP_SERVER_IP', '10.0.0.55'))
     except sqlite3.IntegrityError:
         pass
         
@@ -93,7 +89,6 @@ def login():
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['role'] = user['role']
-            session['is_premium'] = user['is_premium']
             return redirect(url_for('dashboard'))
         flash('Credenciais inválidas')
     return render_template('login.html')
@@ -104,7 +99,6 @@ def register():
         username = request.form.get('username')
         email = request.form.get('email')
         password = request.form.get('password')
-        # VULNERABILIDADE: Aceita 'role' diretamente do formulário (Mass Assignment / Priv Esc)
         role = request.form.get('role', 'user') 
         
         db = get_db()
@@ -126,12 +120,13 @@ def dashboard():
         return redirect(url_for('login'))
     return render_template('dashboard.html')
 
+# --- ENDPOINTS VULNERÁVEIS (BAC) ---
+
 @app.route('/api/v1/invoice/<int:invoice_id>')
 def get_invoice(invoice_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    # VULNERABILIDADE: IDOR - Não verifica se a fatura pertence ao usuário logado
     db = get_db()
     invoice = db.execute('SELECT * FROM invoices WHERE id = ?', (invoice_id,)).fetchone()
     db.close()
@@ -140,25 +135,38 @@ def get_invoice(invoice_id):
         return jsonify(dict(invoice))
     return jsonify({'error': 'Not found'}), 404
 
-@app.route('/api/v1/settings/export')
-def export_settings():
-    # VULNERABILIDADE: Falta de verificação de papel (Role Check)
-    # Apenas verifica se está logado, mas não se é admin
+@app.route('/api/admin/settings')
+def get_admin_settings():
+    """VULNERABILIDADE: Endpoint oculto que não verifica o papel de admin.
+    Qualquer usuário logado pode acessar se souber o caminho."""
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
     db = get_db()
-    settings = db.execute('SELECT * FROM global_settings').fetchall()
+    settings = db.execute('SELECT * FROM admin_settings').fetchall()
     db.close()
     
     return jsonify([dict(s) for s in settings])
 
-@app.route('/admin_panel')
-def admin_panel():
-    # VULNERABILIDADE: Bypass de autorização simples
-    if session.get('role') != 'admin':
-        return "Acesso Negado", 403
-    return render_template('admin.html', flag="FLAG{ADMIN_PATH_BYPASS_7731}")
+@app.route('/api/user/paid-status')
+def get_paid_status():
+    """VULNERABILIDADE: O frontend confia cegamente nesta resposta.
+    O atacante pode interceptar e mudar 'paid: 0' para 'paid: 1'."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    db = get_db()
+    user = db.execute('SELECT paid FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    db.close()
+    
+    return jsonify({'paid': user['paid']})
+
+@app.route('/premium-content')
+def premium_content():
+    """Página de conteúdo premium que deve ser protegida."""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('premium.html')
 
 @app.route('/logout')
 def logout():

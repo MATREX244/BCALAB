@@ -31,22 +31,30 @@
 </div>
 
 <script>
-    // VULNERABILIDADE: Manipulação de Resposta (Client-Side)
-    // O script confia no valor de 'is_premium' retornado pelo servidor ou armazenado no objeto global
-    const userData = {
-        username: "{{ session.get('username') }}",
-        is_premium: {{ 'true' if session.get('is_premium') else 'false' }}
-    };
-
-    function updatePremiumUI() {
+    async function updatePremiumUI() {
         const statusDiv = document.getElementById('premium-status');
-        if (userData.is_premium) {
-            statusDiv.innerText = "PREMIUM ATIVO";
-            statusDiv.className = "bg-green-900 text-green-400 p-3 rounded text-center font-bold";
-            statusDiv.innerHTML += "<br><span class='text-xs'>FLAG{CLIENT_SIDE_PREMIUM_BYPASS_1102}</span>";
+        
+        // VULNERABILIDADE: O frontend faz uma requisição para checar o status
+        // Se o atacante interceptar e mudar o JSON para {"paid": 1}, ele ganha acesso.
+        const res = await fetch('/api/user/paid-status');
+        const data = await res.json();
+
+        if (data.paid === 1) {
+            statusDiv.innerHTML = `
+                <div class="bg-green-900 text-green-400 p-3 rounded text-center font-bold">
+                    PREMIUM ATIVO
+                    <br>
+                    <a href="/premium-content" class="text-xs underline text-green-300">Acessar Conteúdo Exclusivo</a>
+                </div>
+            `;
         } else {
-            statusDiv.innerText = "CONTA GRATUITA";
-            statusDiv.className = "bg-gray-700 text-gray-400 p-3 rounded text-center font-bold";
+            statusDiv.innerHTML = `
+                <div class="bg-gray-700 text-gray-400 p-3 rounded text-center font-bold">
+                    CONTA GRATUITA
+                    <br>
+                    <button onclick="alert('Redirecionando para checkout...')" class="text-xs underline text-blue-300">Fazer Upgrade</button>
+                </div>
+            `;
         }
     }
 
