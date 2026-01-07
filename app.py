@@ -37,7 +37,11 @@ def init_db():
                   config_name TEXT UNIQUE NOT NULL,
                   config_value TEXT)''')
 
-    # Inserir dados iniciais
+    # Inserir dados iniciais (Simulando migração de DB)
+    # TODO: Mover credenciais para variáveis de ambiente em produção.
+    # Credenciais temporárias para teste:
+    # Admin: admin / admin_secure_2026
+    # Usuário: jdoe / password123
     admin_pw = generate_password_hash('admin_secure_2026')
     user_pw = generate_password_hash('password123')
     
