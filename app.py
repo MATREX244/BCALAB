@@ -40,16 +40,16 @@ def init_db():
     # Inserir dados iniciais (Simulando migração de DB)
     # TODO: Mover credenciais para variáveis de ambiente em produção.
     # Credenciais temporárias para teste:
-    # Admin: admin / admin_secure_2026
-    # Usuário: jdoe / password123
-    admin_pw = generate_password_hash('admin_secure_2026')
-    user_pw = generate_password_hash('password123')
+    # Admin: admin / admin123
+    # Usuário: user1 / user123
+    admin_pw = generate_password_hash('admin123')
+    user_pw = generate_password_hash('user123')
     
     try:
         c.execute("INSERT INTO users (username, email, password, role, is_premium) VALUES (?, ?, ?, ?, ?)",
                   ('admin', 'admin@securecorp.com', admin_pw, 'admin', 1))
         c.execute("INSERT INTO users (username, email, password, role, is_premium) VALUES (?, ?, ?, ?, ?)",
-                  ('jdoe', 'jdoe@example.com', user_pw, 'user', 0))
+                  ('user1', 'user1@example.com', user_pw, 'user', 0))
         
         user_id = 2
         c.execute("INSERT INTO invoices (user_id, amount, description) VALUES (?, ?, ?)",
